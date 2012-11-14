@@ -9,6 +9,20 @@ public class Sudoku {
             sudoku[k / 9][k % 9] = s.charAt(k) - '0';
     }
 
+    public void solve()
+    {
+        backtrack(0, 0);
+    }
+
+    public void print()
+    {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++)
+                System.out.print(sudoku[i][j] + " ");
+            System.out.println();
+        }
+    }
+
     private boolean backtrack(int x, int y)
     {
         if (x == 8 && y == 9) return true;
@@ -31,20 +45,6 @@ public class Sudoku {
                 sudoku[x][y] = 0;
             }
         return false;
-    }
-
-    public void solve()
-    {
-        backtrack(0, 0);
-    }
-
-    public void print()
-    {
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 9; j++)
-                System.out.print(sudoku[i][j] + " ");
-            System.out.println();
-        }
     }
 
     public static void main(String args[])
