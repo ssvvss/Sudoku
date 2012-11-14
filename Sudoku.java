@@ -46,6 +46,7 @@ public class Sudoku {
             System.out.println();
         }
     }
+
     public static void main(String args[])
     {
         Sudoku s = new Sudoku("001004703078100602506000090600500020852000947090002006080000209704005360209800400");
