@@ -1,4 +1,3 @@
-//asdasdasd
 public class Sudoku {
     private int[][] sudoku;
 
