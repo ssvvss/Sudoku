@@ -1,1 +1,1 @@
-Java Sudoku Solver. String input.
+Java Sudoku Solver.
