@@ -1,10 +1,12 @@
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class ImageTest {
 
-    public static void main(String[] args) {
-        Image img = new Image("sudoku.jpg");
-//        img.localThresholding();
-//        img.save("out", "bmp");
-        img.houghTransform().save("out", "png");
+    public static void main(String[] args)
+    {
+        Image img = new Image("sudoku.png");
+        img.houghTransform();
+        img.save("out", "png");
     }
 }

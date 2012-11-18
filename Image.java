@@ -2,14 +2,11 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class Image {
     private BufferedImage img;
-
-    public Image(int width, int height)
-    {
-        img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-    }
 
     public Image(String name)
     {
@@ -33,94 +30,81 @@ public class Image {
     {
         return (255 << 24) | (r << 16) | (g << 8) | b;
     }
-    
-    private int intensity(int rgb)
+
+    public void houghTransform()
     {
-        int b = rgb & 255;
-        int g = (rgb >> 8) & 255;
-        int r = (rgb >> 16) & 255;
-        return (77 * r + 150 * g + 28 * b) / 255;
-    }
+        int n = img.getHeight(), m = img.getWidth();
+        int diagonal = (int)(Math.sqrt(n * n + m * m) / 2) + 1;
+        int[][] dp = new int[180][2 * diagonal + 1];
+        double[] sinTable, cosTable;
+        int xc = m / 2, yc = n / 2, x, y;
+      
+        sinTable = new double[180];
+        for (int i = 0; i < 180; i++)
+            sinTable[i] = Math.sin(i * Math.PI / 180);
 
-    public void grayscale()
-    {
-        for (int i = 0; i < img.getWidth(); i++)
-            for (int j = 0; j < img.getHeight(); j++) {
-                int g = intensity(img.getRGB(i, j));
-                img.setRGB(i, j, RGB(g, g, g));
-            }
-    }
+        cosTable = new double[180];
+        for (int i = 0; i < 180; i++)
+            cosTable[i] = Math.cos(i * Math.PI / 180);
+        
+        for (int u = 0; u < m; u++)
+            for (int v = 0; v < n; v++)
+                if (img.getRGB(u, v) == RGB(255, 255, 255)) {
+                    x = u - xc; y = v - yc;
 
-    public void globalThresholding()
-    {
-        for (int i = 0; i < img.getWidth(); i++)
-            for (int j = 0; j < img.getHeight(); j++) {
-                if (127 <= intensity(img.getRGB(i, j)))
-                    img.setRGB(i, j, RGB(255, 255, 255));
-                else
-                    img.setRGB(i, j, RGB(0, 0, 0));
-            }
-    }
-
-    public void localThresholding()
-    {
-        int n = img.getWidth(), m = img.getHeight(), radius = 5;
-        int[][] table = new int[n][m];
-        int[][] sum = new int[n][m];
-
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < m; j++)
-                table[i][j] = intensity(img.getRGB(i, j));
-
-        sum[0][0] = table[0][0];
-        for (int d = 1; d <= m + n - 2; d++)
-            for (int i = 0; i <= d; i++)
-                if (i < n && d - i < m) {
-                    sum[i][d - i] += table[i][d - i];
-                    if (i > 0)
-                        sum[i][d - i] += sum[i - 1][d - i];
-                    if (d - i > 0)
-                        sum[i][d - i] += sum[i][d - i - 1];
-                    if (i > 0 && d - i > 0)
-                        sum[i][d - i] -= sum[i - 1][d - i - 1];
+                    for (int theta = 0; theta < 180; theta++) {
+                        int r = (int)(x * cosTable[theta] + y * sinTable[theta]);
+                        dp[theta][r + diagonal]++;
+                    }
                 }
 
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < m; j++) {
-                int x1 = i - radius, y1 = j - radius;
-                int xn = i + radius, yn = j + radius;
+        ArrayList<Triple> arr = new ArrayList<Triple>();
+        int ansTheta = 0, ansR = 0, maxP = 0;
+        for (int i = 0; i < 180; i++)
+            for (int j = 0; j < 2 * diagonal + 1; j++) {
+                arr.add(new Triple(dp[i][j], i, j));
+                if (dp[i][j] > maxP) {
+                    maxP = dp[i][j];
+                    ansTheta = i;
+                    ansR = j;
+                }
+            }
+        ansR -= diagonal;
+        
+//        double a = -cosTable[ansTheta] / sinTable[ansTheta];
+//        double b = ansR / sinTable[ansTheta];
+//
+//        for (int u = -xc; u < xc; u++) {
+//            int v = (int)(a * u + b);
+//
+//            if (u + xc >= 0 && u + xc < m && v + yc >= 0 && v + yc < n)
+//                img.setRGB(u + xc, v + yc, RGB(255, 0, 0));
+//        }
+        Collections.sort(arr);
+        
+        for (int i = 0; i < 300; i++) {
+            int theta = arr.get(i).getSecond();
+            int r = arr.get(i).getThird() - diagonal;
+            double a = -cosTable[theta] / sinTable[theta];
+            double b = r / sinTable[theta];
 
-                if (x1 < 0) x1 = 0;
-                if (y1 < 0) y1 = 0;
-                if (xn >= n) xn = n - 1;
-                if (yn >= m) yn = m - 1;
-
-                int A, B, C, D;
-
-                A = sum[xn][yn];
-
-                if (x1 == 0) B = 0;
-                else B = sum[x1 - 1][yn];
-
-                if (y1 == 0) C = 0;
-                else C = sum[xn][y1 - 1];
-
-                if (x1 == 0 || y1 == 0) D = 0;
-                else D = sum[x1 - 1][y1 - 1];
-
-                if (A + D - B - C <= table[i][j] * (xn - x1 + 1) * (yn - y1 + 1))
-                    img.setRGB(i, j, RGB(0, 0, 0));
-                else
-                    img.setRGB(i, j, RGB(255, 255, 255));
+            if (theta < 92 && theta > 88) {
+                System.out.println(arr.get(i).getFirst());
+                drawLine(a, b);
             }
         }
     }
 
-    public Image houghTransform()
+    private void drawLine(double a, double b)
     {
         int n = img.getHeight(), m = img.getWidth();
-        Image result = new Image(180, (int)Math.sqrt(n * n + m * m));
+        int xc = m / 2, yc = n / 2;
 
-        return result;
+        for (int u = -xc; u < xc; u++) {
+            int v = (int)(a * u + b);
+
+            if (u + xc >= 0 && u + xc < m && v + yc >= 0 && v + yc < n)
+                img.setRGB(u + xc, v + yc, RGB(255, 0, 0));
+        }
     }
 }
